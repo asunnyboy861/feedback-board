@@ -50,10 +50,11 @@ Content-Type: application/json
   "name": "用户姓名",
   "email": "user@example.com",
   "subject": "反馈主题",
-  "message": "反馈内容",
-  "app_name": "软件名称"
+  "message": "反馈内容"
 }
 ```
+
+**注意**：`app_name` 字段由前端代码自动配置，无需用户填写。
 
 **成功响应**：
 ```json
@@ -459,9 +460,21 @@ export default FeedbackForm;
 
 在所有示例中，将 `https://feedback-board.iocompile67692.workers.dev` 替换为你的实际 Worker URL。
 
-### 2. 修改软件名称
+### 2. 配置软件名称（重要）
 
-将 `你的软件名称` 替换为你的实际软件名称。
+**软件名称由前端代码自动配置，用户无需填写。**
+
+在代码顶部找到 `APP_NAME` 常量，将其修改为你的实际软件名称：
+
+```javascript
+const APP_NAME = '你的软件名称';  // 修改这里
+```
+
+**配置说明**：
+- ✅ 软件名称在前端代码中配置一次即可
+- ✅ 用户提交反馈时自动附加该软件名称
+- ✅ 无需在表单中添加软件名称输入框
+- ✅ 便于在留言板中按软件分类查看反馈
 
 ### 3. 环境变量（可选）
 
@@ -686,8 +699,10 @@ https://your-worker-name.your-subdomain.workers.dev
 ```bash
 curl -X POST https://your-worker-url.workers.dev/api/feedback \
   -H "Content-Type: application/json" \
-  -d '{"name":"测试","email":"test@example.com","subject":"测试","message":"测试内容","app_name":"测试软件"}'
+  -d '{"name":"测试","email":"test@example.com","subject":"测试","message":"测试内容"}'
 ```
+
+**注意**：`app_name` 由前端代码自动添加，无需在测试中包含。
 
 ### Q4: 提交失败怎么办？
 
@@ -717,6 +732,19 @@ curl -X POST https://your-worker-url.workers.dev/api/feedback \
 数据存储在 Cloudflare D1 数据库中，Cloudflare 提供企业级的安全保障。建议：
 - 定期备份数据
 - 不要在反馈中提交敏感信息（如密码、信用卡号等）
+
+### Q9: 软件名称如何配置？
+
+软件名称在前端代码中通过 `APP_NAME` 常量配置：
+
+```javascript
+const APP_NAME = '你的软件名称';
+```
+
+配置后，所有用户提交的反馈都会自动标记为该软件名称，用户无需手动填写。这样：
+- 简化用户界面（减少输入字段）
+- 确保数据一致性（所有反馈都有正确的软件名称）
+- 便于后续统计和分析（按软件分类查看反馈）
 
 ## 📚 相关文档
 
