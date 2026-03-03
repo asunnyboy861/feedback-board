@@ -5,6 +5,11 @@ compatibility_date = "2024-01-01"
 [env.production]
 vars = { ENVIRONMENT = "production" }
 
+[vars]
+RESEND_API_KEY = "re_hST9atNY_Fa9enaVrLrA6g3eWb6C8vX2m"
+NOTIFICATION_EMAIL = "Carl@zzoutuo.com"
+FROM_EMAIL = "softfeedback@soft.calcs.top"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "feedback_db"

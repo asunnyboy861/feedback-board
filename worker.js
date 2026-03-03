@@ -28,13 +28,45 @@ export default {
 
         const ip_address = request.headers.get('CF-Connecting-IP') || '未知';
         const country = request.headers.get('CF-IPCountry') || '未知';
+        const created_at = new Date().toISOString();
 
         const result = await env.DB.prepare(
           'INSERT INTO feedback (name, email, subject, message, app_name, country, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)'
         ).bind(name, email, subject, message, app_name, country, ip_address).run();
 
+        const feedbackId = result.meta.last_row_id;
+
+        console.log('Feedback saved with ID:', feedbackId);
+        console.log('Environment variables check:');
+        console.log('- RESEND_API_KEY exists:', !!env.RESEND_API_KEY);
+        console.log('- NOTIFICATION_EMAIL:', env.NOTIFICATION_EMAIL);
+        console.log('- FROM_EMAIL:', env.FROM_EMAIL);
+
+        if (env.RESEND_API_KEY && env.NOTIFICATION_EMAIL) {
+          try {
+            console.log('Attempting to send email notification...');
+            await sendNotificationEmail(env, {
+              id: feedbackId,
+              name,
+              email,
+              subject,
+              message,
+              app_name,
+              country,
+              ip_address,
+              created_at
+            });
+            console.log('Email notification sent successfully');
+          } catch (emailError) {
+            console.error('Failed to send email notification:', emailError);
+            console.error('Error stack:', emailError.stack);
+          }
+        } else {
+          console.log('Email notification skipped - missing environment variables');
+        }
+
         return new Response(
-          JSON.stringify({ success: true, id: result.meta.last_row_id }),
+          JSON.stringify({ success: true, id: feedbackId }),
           { 
             status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -59,6 +91,102 @@ export default {
 
         return new Response(
           JSON.stringify(result.results),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      } catch (error) {
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+    }
+
+    if (url.pathname === '/debug' && request.method === 'GET') {
+      const debugInfo = {
+        timestamp: new Date().toISOString(),
+        environment: {
+          hasResendApiKey: !!env.RESEND_API_KEY,
+          resendApiKeyPrefix: env.RESEND_API_KEY ? env.RESEND_API_KEY.substring(0, 10) + '...' : 'not set',
+          notificationEmail: env.NOTIFICATION_EMAIL || 'not set',
+          fromEmail: env.FROM_EMAIL || 'not set',
+        },
+        database: {
+          binding: !!env.DB,
+          databaseName: env.DB ? 'feedback_db' : 'not bound',
+        },
+        test: {
+          message: 'Debug endpoint working',
+        }
+      };
+
+      return new Response(JSON.stringify(debugInfo, null, 2), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (url.pathname === '/test-feedback' && request.method === 'POST') {
+      try {
+        const testData = {
+          name: '测试用户',
+          email: 'test@example.com',
+          subject: '测试邮件发送',
+          message: '这是一条测试消息，用于验证邮件发送功能是否正常工作。',
+          app_name: '测试软件'
+        };
+
+        const ip_address = request.headers.get('CF-Connecting-IP') || '未知';
+        const country = request.headers.get('CF-IPCountry') || '未知';
+        const created_at = new Date().toISOString();
+
+        const result = await env.DB.prepare(
+          'INSERT INTO feedback (name, email, subject, message, app_name, country, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(testData.name, testData.email, testData.subject, testData.message, testData.app_name, country, ip_address).run();
+
+        const feedbackId = result.meta.last_row_id;
+
+        console.log('Test feedback saved with ID:', feedbackId);
+        console.log('Environment variables check:');
+        console.log('- RESEND_API_KEY exists:', !!env.RESEND_API_KEY);
+        console.log('- NOTIFICATION_EMAIL:', env.NOTIFICATION_EMAIL);
+        console.log('- FROM_EMAIL:', env.FROM_EMAIL);
+
+        let emailResult = null;
+        let emailError = null;
+
+        if (env.RESEND_API_KEY && env.NOTIFICATION_EMAIL) {
+          try {
+            console.log('Attempting to send email notification...');
+            emailResult = await sendNotificationEmail(env, {
+              id: feedbackId,
+              ...testData,
+              country,
+              ip_address,
+              created_at
+            });
+            console.log('Email notification sent successfully');
+          } catch (err) {
+            console.error('Failed to send email notification:', err);
+            console.error('Error stack:', err.stack);
+            emailError = err.message;
+          }
+        } else {
+          console.log('Email notification skipped - missing environment variables');
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            id: feedbackId,
+            emailSent: !!emailResult,
+            emailResult: emailResult,
+            emailError: emailError
+          }),
           { 
             status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -511,4 +639,125 @@ function getHTML() {
     </script>
 </body>
 </html>`;
+}
+
+async function sendNotificationEmail(env, feedback) {
+  console.log('sendNotificationEmail called with feedback:', feedback);
+  const emailContent = generateEmailTemplate(feedback);
+  
+  console.log('Sending email to:', env.NOTIFICATION_EMAIL);
+  console.log('From:', env.FROM_EMAIL);
+  console.log('Subject:', `📧 新反馈：${feedback.app_name} - ${feedback.subject}`);
+  
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: env.FROM_EMAIL || 'noreply@yourdomain.com',
+      to: env.NOTIFICATION_EMAIL,
+      subject: `📧 新反馈：${feedback.app_name} - ${feedback.subject}`,
+      html: emailContent,
+    }),
+  });
+
+  console.log('Resend API response status:', response.status);
+  console.log('Resend API response ok:', response.ok);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Resend API error response:', errorText);
+    throw new Error(`Resend API error: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  console.log('Resend API response:', result);
+  return result;
+}
+
+function generateEmailTemplate(feedback) {
+  const formattedDate = new Date(feedback.created_at).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新反馈通知</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f7;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">📧 新反馈通知</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">您收到了一条新的用户反馈</p>
+        </div>
+        
+        <div style="background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+                <h2 style="color: #333333; margin: 0 0 10px 0; font-size: 20px; font-weight: 600;">${escapeHtml(feedback.subject)}</h2>
+                <p style="color: #666666; margin: 0; font-size: 15px; line-height: 1.6;">${escapeHtml(feedback.message)}</p>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #333333; margin: 0 0 15px 0; font-size: 16px; font-weight: 600; border-bottom: 2px solid #667eea; padding-bottom: 10px;">📋 反馈详情</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px 0; color: #666666; font-size: 14px; width: 120px; font-weight: 500;">软件名称</td>
+                        <td style="padding: 12px 0; color: #333333; font-size: 14px; font-weight: 600;">${escapeHtml(feedback.app_name)}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px 0; color: #666666; font-size: 14px; width: 120px; font-weight: 500;">用户姓名</td>
+                        <td style="padding: 12px 0; color: #333333; font-size: 14px;">${escapeHtml(feedback.name)}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px 0; color: #666666; font-size: 14px; width: 120px; font-weight: 500;">邮箱地址</td>
+                        <td style="padding: 12px 0; color: #333333; font-size: 14px;"><a href="mailto:${escapeHtml(feedback.email)}" style="color: #667eea; text-decoration: none;">${escapeHtml(feedback.email)}</a></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px 0; color: #666666; font-size: 14px; width: 120px; font-weight: 500;">国家/地区</td>
+                        <td style="padding: 12px 0; color: #333333; font-size: 14px;">${escapeHtml(feedback.country)}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px 0; color: #666666; font-size: 14px; width: 120px; font-weight: 500;">IP 地址</td>
+                        <td style="padding: 12px 0; color: #333333; font-size: 14px;">${escapeHtml(feedback.ip_address)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; color: #666666; font-size: 14px; width: 120px; font-weight: 500;">提交时间</td>
+                        <td style="padding: 12px 0; color: #333333; font-size: 14px;">${formattedDate}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <p style="color: #999999; margin: 0; font-size: 13px;">此邮件由反馈系统自动发送，请勿直接回复。</p>
+                <p style="color: #999999; margin: 5px 0 0 0; font-size: 13px;">反馈 ID: #${feedback.id}</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <p style="color: #999999; margin: 0; font-size: 12px;">© ${new Date().getFullYear()} 反馈系统. 保留所有权利。</p>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }

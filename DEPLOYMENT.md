@@ -50,6 +50,43 @@ database_name = "feedback-db"
 database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # 替换为实际的 database_id
 ```
 
+## 步骤四点五：配置邮件通知（可选）
+
+系统支持在新反馈提交时发送邮件通知。使用 Resend API 实现邮件发送。
+
+### 4.1 注册 Resend 账户
+
+1. 访问 [Resend 官网](https://resend.com/) 注册账户
+2. 在 Dashboard 中获取 API Key
+3. 免费额度：3000 封邮件/月
+
+### 4.2 配置环境变量
+
+在 Cloudflare Dashboard 中设置环境变量：
+
+1. 进入 Cloudflare Dashboard
+2. 选择你的 Worker
+3. 点击 "Settings" -> "Variables and Secrets"
+4. 添加以下环境变量：
+
+| 变量名 | 说明 | 示例值 |
+|--------|------|--------|
+| `RESEND_API_KEY` | Resend API 密钥 | `re_xxxxxxxxxxxxxx` |
+| `NOTIFICATION_EMAIL` | 接收通知的邮箱 | `Carl@zzoutuo.com` |
+| `FROM_EMAIL` | 发件人邮箱（可选） | `noreply@yourdomain.com` |
+
+### 4.3 验证发件人域名
+
+如果使用自定义域名作为发件人邮箱，需要在 Resend 中验证域名：
+
+1. 在 Resend Dashboard 中添加域名
+2. 按照提示配置 DNS 记录
+3. 等待验证通过
+
+### 4.4 测试邮件发送
+
+部署后，提交一条测试反馈，检查是否收到邮件通知。
+
 ## 步骤五：初始化数据库表
 
 创建数据库表：
@@ -210,6 +247,29 @@ Worker 已配置 CORS 支持，如果仍有问题，检查：
 确保：
 - 请求通过 Cloudflare 代理
 - Worker 部署在 Cloudflare Workers 上
+
+### 5. 邮件通知未发送
+
+检查：
+- 是否在 Cloudflare Dashboard 中配置了 `RESEND_API_KEY` 环境变量
+- 是否配置了 `NOTIFICATION_EMAIL` 环境变量
+- Resend API Key 是否有效
+- 是否超出 Resend 免费额度（3000 封/月）
+
+### 6. 邮件发送失败
+
+如果邮件发送失败：
+- 检查 Worker 日志中的错误信息
+- 确认 Resend API Key 权限正确
+- 验证发件人域名是否已在 Resend 中验证
+- 检查收件人邮箱地址是否正确
+
+### 7. 邮件被标记为垃圾邮件
+
+如果邮件被标记为垃圾邮件：
+- 确保发件人域名已在 Resend 中验证
+- 配置 SPF、DKIM、DMARC 记录
+- 使用专业的发件人邮箱地址
 
 ## 本地开发
 
