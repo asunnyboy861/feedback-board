@@ -92,6 +92,62 @@ Content-Type: application/json
 ]
 ```
 
+### 调试端点（开发测试用）
+
+#### 检查环境变量
+
+**端点**：`GET /debug`
+
+**用途**：检查 Worker 的环境变量配置是否正确
+
+**响应**：
+```json
+{
+  "timestamp": "2026-03-03T07:56:20.173Z",
+  "environment": {
+    "hasResendApiKey": true,
+    "resendApiKeyPrefix": "re_hST9atN...",
+    "notificationEmail": "Carl@zzoutuo.com",
+    "fromEmail": "softfeedback@soft.calcs.top"
+  },
+  "database": {
+    "binding": true,
+    "databaseName": "feedback_db"
+  }
+}
+```
+
+**使用场景**：
+- 验证邮件 API 密钥是否正确配置
+- 检查数据库绑定状态
+- 确认环境变量是否生效
+
+#### 测试邮件发送
+
+**端点**：`POST /test-feedback`
+
+**用途**：测试邮件发送功能是否正常工作
+
+**响应**：
+```json
+{
+  "success": true,
+  "id": 17,
+  "emailSent": true,
+  "emailResult": {
+    "id": "5c7f6396-121b-4ada-a85c-6889d1d780ca"
+  },
+  "emailError": null
+}
+```
+
+**使用场景**：
+- 测试邮件通知功能
+- 验证 Resend API 连接
+- 排查邮件发送问题
+
+**注意**：此端点会自动创建一条测试反馈并发送邮件，仅供开发测试使用。
+
 ## 💻 前端集成示例
 
 ### 方案一：使用 JavaScript 客户端库
@@ -681,7 +737,7 @@ const APP_NAME = process.env.APP_NAME || '你的软件名称';
 
 部署成功后，Wrangler 会显示你的 Worker URL，格式为：
 ```
-https://your-worker-name.your-subdomain.workers.dev
+https://feedback-board.iocompile67692.workers.dev
 ```
 
 ### Q2: 可以自定义 Worker URL 吗？
@@ -703,6 +759,19 @@ curl -X POST https://your-worker-url.workers.dev/api/feedback \
 ```
 
 **注意**：`app_name` 由前端代码自动添加，无需在测试中包含。
+
+### Q3.1: 如何测试邮件通知功能？
+
+访问调试端点测试邮件发送：
+
+```bash
+curl -X POST https://your-worker-url.workers.dev/test-feedback
+```
+
+或在浏览器中：
+1. 访问 `https://your-worker-url.workers.dev/debug` 检查环境变量
+2. 使用开发者工具发送 POST 请求到 `/test-feedback`
+3. 检查邮箱是否收到测试邮件
 
 ### Q4: 提交失败怎么办？
 
@@ -745,6 +814,39 @@ const APP_NAME = '你的软件名称';
 - 简化用户界面（减少输入字段）
 - 确保数据一致性（所有反馈都有正确的软件名称）
 - 便于后续统计和分析（按软件分类查看反馈）
+
+### Q10: 邮件通知功能是如何工作的？
+
+当用户提交反馈时，系统会自动：
+1. 将反馈保存到 Cloudflare D1 数据库
+2. 使用 Resend API 发送邮件通知到配置的邮箱
+3. 邮件包含完整的反馈信息（用户信息、反馈内容、地理位置等）
+
+**配置要求**：
+- 在 `wrangler.toml` 中配置 `RESEND_API_KEY`、`NOTIFICATION_EMAIL` 和 `FROM_EMAIL`
+- 在 Resend 后台验证发件人域名
+
+**无需前端额外配置**，邮件发送功能完全由 Worker 后端处理。
+
+### Q11: 如何排查邮件发送问题？
+
+1. **检查环境变量**：
+   - 访问 `https://your-worker-url.workers.dev/debug`
+   - 确认 `RESEND_API_KEY`、`NOTIFICATION_EMAIL` 和 `FROM_EMAIL` 都已正确配置
+
+2. **测试邮件发送**：
+   - 发送 POST 请求到 `https://your-worker-url.workers.dev/test-feedback`
+   - 检查响应中的 `emailSent` 字段
+   - 查看邮箱是否收到测试邮件
+
+3. **查看 Resend 后台**：
+   - 登录 [Resend Dashboard](https://resend.com/dashboard)
+   - 查看 API 请求日志
+   - 检查是否有发送失败的记录
+
+4. **检查 Worker 日志**：
+   - 使用 `wrangler tail` 命令查看实时日志
+   - 查找邮件发送相关的错误信息
 
 ## 📚 相关文档
 
