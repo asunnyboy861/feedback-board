@@ -182,7 +182,20 @@ Content-Type: application/json
         
         <div>
             <label>主题：</label>
-            <input type="text" id="subject" required>
+            <div id="subjectOptions" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                <button type="button" class="subject-option" data-value="功能建议">功能建议</button>
+                <button type="button" class="subject-option" data-value="Bug 反馈">Bug 反馈</button>
+                <button type="button" class="subject-option" data-value="使用问题">使用问题</button>
+                <button type="button" class="subject-option" data-value="性能问题">性能问题</button>
+                <button type="button" class="subject-option" data-value="界面优化">界面优化</button>
+                <button type="button" class="subject-option" data-value="其他" class="active">其他</button>
+            </div>
+            <input type="hidden" id="subject" value="其他" required>
+        </div>
+        
+        <div id="customSubjectDiv" style="display: block;">
+            <label>自定义主题：</label>
+            <input type="text" id="customSubject" placeholder="请输入自定义主题">
         </div>
         
         <div>
@@ -200,6 +213,16 @@ Content-Type: application/json
         const WORKER_URL = 'https://feedback-board.iocompile67692.workers.dev';
         const APP_NAME = '你的软件名称';
         
+        const FEEDBACK_SUBJECTS = [
+            '功能建议',
+            'Bug 反馈',
+            '使用问题',
+            '性能问题',
+            '界面优化',
+            '其他'
+        ];
+        const DEFAULT_SUBJECT = '其他';
+        
         const client = new FeedbackClient(WORKER_URL);
         
         document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
@@ -208,12 +231,14 @@ Content-Type: application/json
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const subject = document.getElementById('subject').value;
+            const customSubject = document.getElementById('customSubject').value;
+            const finalSubject = subject === '其他' ? customSubject : subject;
             const message = document.getElementById('message').value;
             
             const result = await client.submitFeedback(
                 name,
                 email,
-                subject,
+                finalSubject,
                 message,
                 APP_NAME
             );
@@ -226,6 +251,23 @@ Content-Type: application/json
             } else {
                 resultDiv.innerHTML = '<p style="color: red;">提交失败：' + result.error + '</p>';
             }
+        });
+        
+        document.getElementById('subject').addEventListener('change', (e) => {
+            const customSubjectDiv = document.getElementById('customSubjectDiv');
+            customSubjectDiv.style.display = e.target.value === '其他' ? 'block' : 'none';
+        });
+        
+        const subjectOptions = document.querySelectorAll('.subject-option');
+        subjectOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                subjectOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                document.getElementById('subject').value = option.dataset.value;
+                
+                const customSubjectDiv = document.getElementById('customSubjectDiv');
+                customSubjectDiv.style.display = option.dataset.value === '其他' ? 'block' : 'none';
+            });
         });
     </script>
 </body>
@@ -260,7 +302,20 @@ Content-Type: application/json
         
         <div>
             <label>主题：</label>
-            <input type="text" id="subject" required>
+            <div id="subjectOptions" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                <button type="button" class="subject-option" data-value="功能建议">功能建议</button>
+                <button type="button" class="subject-option" data-value="Bug 反馈">Bug 反馈</button>
+                <button type="button" class="subject-option" data-value="使用问题">使用问题</button>
+                <button type="button" class="subject-option" data-value="性能问题">性能问题</button>
+                <button type="button" class="subject-option" data-value="界面优化">界面优化</button>
+                <button type="button" class="subject-option" data-value="其他" class="active">其他</button>
+            </div>
+            <input type="hidden" id="subject" value="其他" required>
+        </div>
+        
+        <div id="customSubjectDiv" style="display: block;">
+            <label>自定义主题：</label>
+            <input type="text" id="customSubject" placeholder="请输入自定义主题">
         </div>
         
         <div>
@@ -277,12 +332,24 @@ Content-Type: application/json
         const WORKER_URL = 'https://feedback-board.iocompile67692.workers.dev';
         const APP_NAME = '你的软件名称';
         
+        const FEEDBACK_SUBJECTS = [
+            '功能建议',
+            'Bug 反馈',
+            '使用问题',
+            '性能问题',
+            '界面优化',
+            '其他'
+        ];
+        const DEFAULT_SUBJECT = '其他';
+        
         document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const subject = document.getElementById('subject').value;
+            const customSubject = document.getElementById('customSubject').value;
+            const finalSubject = subject === '其他' ? customSubject : subject;
             const message = document.getElementById('message').value;
             
             try {
@@ -294,7 +361,7 @@ Content-Type: application/json
                     body: JSON.stringify({
                         name: name,
                         email: email,
-                        subject: subject,
+                        subject: finalSubject,
                         message: message,
                         app_name: APP_NAME
                     })
@@ -313,6 +380,18 @@ Content-Type: application/json
                 document.getElementById('result').innerHTML = 
                     '<p style="color: red;">网络错误：' + error.message + '</p>';
             }
+        });
+        
+        const subjectOptions = document.querySelectorAll('.subject-option');
+        subjectOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                subjectOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                document.getElementById('subject').value = option.dataset.value;
+                
+                const customSubjectDiv = document.getElementById('customSubjectDiv');
+                customSubjectDiv.style.display = option.dataset.value === '其他' ? 'block' : 'none';
+            });
         });
     </script>
 </body>
@@ -532,7 +611,38 @@ const APP_NAME = '你的软件名称';  // 修改这里
 - ✅ 无需在表单中添加软件名称输入框
 - ✅ 便于在留言板中按软件分类查看反馈
 
-### 3. 环境变量（可选）
+### 3. 配置预设反馈主题（推荐）
+
+**为用户提供预设的反馈主题选项，提升用户体验。**
+
+在代码顶部添加预设主题列表：
+
+```javascript
+const FEEDBACK_SUBJECTS = [
+  '功能建议',
+  'Bug 反馈',
+  '使用问题',
+  '性能问题',
+  '界面优化',
+  '其他'
+];  // 可以根据需要修改或添加主题
+
+const DEFAULT_SUBJECT = '其他';  // 默认主题
+```
+
+**配置说明**：
+- ✅ 用户从下拉列表中选择主题，无需手动输入
+- ✅ 节省用户时间，提升填写效率
+- ✅ 统一反馈主题格式，便于后续分析
+- ✅ 可以设置默认主题，简化操作流程
+
+**使用方式**：
+- 使用小方块按钮形式，上下排列，更直观
+- 点击按钮选择主题，自动高亮选中项
+- 保留"其他"选项供用户自定义
+- 选择"其他"时显示自定义主题输入框
+
+### 4. 环境变量（可选）
 
 如果你想在不同的环境使用不同的 URL，可以使用环境变量：
 
@@ -624,6 +734,30 @@ const APP_NAME = process.env.APP_NAME || '你的软件名称';
             opacity: 0.6;
             cursor: not-allowed;
         }
+        .subject-option {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .subject-option:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .subject-option.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
         .result {
             margin-top: 20px;
             padding: 15px;
@@ -657,7 +791,20 @@ const APP_NAME = process.env.APP_NAME || '你的软件名称';
             
             <div class="form-group">
                 <label for="subject">主题</label>
-                <input type="text" id="subject" name="subject" required placeholder="请输入反馈主题">
+                <div id="subjectOptions" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                    <button type="button" class="subject-option" data-value="功能建议">功能建议</button>
+                    <button type="button" class="subject-option" data-value="Bug 反馈">Bug 反馈</button>
+                    <button type="button" class="subject-option" data-value="使用问题">使用问题</button>
+                    <button type="button" class="subject-option" data-value="性能问题">性能问题</button>
+                    <button type="button" class="subject-option" data-value="界面优化">界面优化</button>
+                    <button type="button" class="subject-option" data-value="其他" class="active">其他</button>
+                </div>
+                <input type="hidden" id="subject" name="subject" value="其他" required>
+            </div>
+            
+            <div class="form-group" id="customSubjectDiv" style="display: block;">
+                <label for="customSubject">自定义主题</label>
+                <input type="text" id="customSubject" name="customSubject" placeholder="请输入自定义主题">
             </div>
             
             <div class="form-group">
@@ -684,6 +831,8 @@ const APP_NAME = process.env.APP_NAME || '你的软件名称';
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const subject = document.getElementById('subject').value;
+            const customSubject = document.getElementById('customSubject').value;
+            const finalSubject = subject === '其他' ? customSubject : subject;
             const message = document.getElementById('message').value;
             
             submitBtn.disabled = true;
@@ -699,7 +848,7 @@ const APP_NAME = process.env.APP_NAME || '你的软件名称';
                     body: JSON.stringify({
                         name: name,
                         email: email,
-                        subject: subject,
+                        subject: finalSubject,
                         message: message,
                         app_name: APP_NAME
                     })
@@ -725,6 +874,18 @@ const APP_NAME = process.env.APP_NAME || '你的软件名称';
                 submitBtn.disabled = false;
                 submitBtn.textContent = '提交反馈';
             }
+        });
+        
+        const subjectOptions = document.querySelectorAll('.subject-option');
+        subjectOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                subjectOptions.forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                document.getElementById('subject').value = option.dataset.value;
+                
+                const customSubjectDiv = document.getElementById('customSubjectDiv');
+                customSubjectDiv.style.display = option.dataset.value === '其他' ? 'block' : 'none';
+            });
         });
     </script>
 </body>
