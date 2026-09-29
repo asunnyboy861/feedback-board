@@ -19,6 +19,13 @@
 https://feedback-board.iocompile67692.workers.dev
 ```
 
+本 Worker 同时已绑定自定义域名（推荐，国内访问更稳定）：
+```
+https://msg.calcs.top
+```
+
+> 两个地址指向同一个 Worker，数据完全互通，代码中任选其一即可。workers.dev 地址在国内可能无法访问，建议优先使用自定义域名。
+
 ### 2. 在前端页面中引入
 
 将以下代码添加到你的 HTML 页面中：
@@ -595,6 +602,13 @@ export default FeedbackForm;
 
 在所有示例中，将 `https://feedback-board.iocompile67692.workers.dev` 替换为你的实际 Worker URL。
 
+本项目当前可用的 Worker 地址（两个地址等价，指向同一 Worker）：
+
+| 地址 | 说明 |
+|------|------|
+| `https://msg.calcs.top` | 自定义域名（推荐，国内可稳定访问） |
+| `https://feedback-board.iocompile67692.workers.dev` | 默认 workers.dev 地址（备用，国内可能无法访问） |
+
 ### 2. 配置软件名称（重要）
 
 **软件名称由前端代码自动配置，用户无需填写。**
@@ -903,7 +917,9 @@ https://feedback-board.iocompile67692.workers.dev
 
 ### Q2: 可以自定义 Worker URL 吗？
 
-可以。在 Cloudflare Dashboard 中，你可以：
+可以。本 Worker 已绑定自定义域名 `https://msg.calcs.top`，与默认的 `https://feedback-board.iocompile67692.workers.dev` 同时有效，数据互通。
+
+如需再添加其他域名，在 Cloudflare Dashboard 中：
 1. 进入 Workers & Pages
 2. 选择你的 Worker
 3. 点击 Settings
