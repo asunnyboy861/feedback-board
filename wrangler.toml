@@ -6,6 +6,9 @@ routes = [
   { pattern = "msg.calcs.top", custom_domain = true }
 ]
 
+# 保留默认 workers.dev 地址（已有大量客户端在使用，不可关闭）
+workers_dev = true
+
 [env.production]
 vars = { ENVIRONMENT = "production" }
 

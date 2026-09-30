@@ -925,6 +925,43 @@ https://feedback-board.iocompile67692.workers.dev
 3. 点击 Settings
 4. 在 Custom Domains 中添加自定义域名
 
+### Q2.1: 部署自定义域名后，workers.dev 地址突然失效（404）怎么办？
+
+**这是一个常见坑**：当 `wrangler.toml` 中添加了 `routes`（自定义域名）后再执行 `wrangler deploy`，Cloudflare 会自动关闭 `workers.dev` 触发器，导致默认地址返回 404。
+
+**解决方法**：在 `wrangler.toml` 中显式声明保留 workers.dev 地址：
+
+```toml
+routes = [
+  { pattern = "msg.calcs.top", custom_domain = true }
+]
+
+# 显式保留 workers.dev 地址（否则部署后会被自动关闭，已有客户端会 404）
+workers_dev = true
+```
+
+然后重新执行 `wrangler deploy`。部署成功后 Wrangler 会同时显示两个触发器：
+
+```
+Deployed feedback-board triggers
+  https://feedback-board.iocompile67692.workers.dev
+  msg.calcs.top (custom domain)
+```
+
+> ⚠️ 如果你的 workers.dev 地址已经签入大量客户端，务必保留此配置，避免部署后客户端全部失联。
+
+### Q2.2: 为什么 wrangler.toml 中没有 RESEND_API_KEY？
+
+为了安全，API 密钥不以明文写在 `wrangler.toml` 中（避免提交到 Git 仓库泄露）。改用 Wrangler Secret 管理，密钥会被加密存储在 Cloudflare：
+
+```bash
+echo "你的_Resend_API_Key" | npx wrangler secret put RESEND_API_KEY
+```
+
+Secret 设置一次后持续生效，后续正常执行 `wrangler deploy` 也不会丢失（注意：如果之前把密钥写在 `[vars]` 中，移除后必须改用 secret 重新设置，否则邮件通知会静默失效）。
+
+验证方式：提交一条测试反馈，检查是否收到邮件通知。
+
 ### Q3: 如何测试 API 是否正常工作？
 
 使用浏览器开发者工具或 curl：
